@@ -1,0 +1,7 @@
+tap "homebrew/bundle"
+tap "homebrew/cask"
+tap "homebrew/core"
+brew "gcc"
+brew "gdb"
+brew "john"
+cask "wkhtmltopdf"
