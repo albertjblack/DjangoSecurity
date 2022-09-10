@@ -135,6 +135,10 @@ MEDIA_URL = '/uploads/'
 
 FRONTEND_ROOT = os.path.abspath(os.path.join(BASE_DIR, '..', 'frontend', 'dist', 'frontend'))
 
+# Default auto field
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
+
+
 # Authentication using OAuth 2.0
 AUTHENTICATION_BACKENDS = (
     'oauth2_provider.backends.OAuth2Backend',
