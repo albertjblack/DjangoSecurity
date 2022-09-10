@@ -13,7 +13,7 @@ class PackageAdmin(admin.ModelAdmin):
     inlines = (PackagePermissionInline,)
 
 class ActivityLogAdmin(admin.ModelAdmin):
-    list_display = ('id', 'action')
+    list_display = ('id', 'action') # members of the class
 
 admin.site.register(Booking, BookingAdmin)
 admin.site.register(Package, PackageAdmin)

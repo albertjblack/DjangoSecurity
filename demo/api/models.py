@@ -1,3 +1,4 @@
+#from os import SCHED_SPORADIC
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
@@ -5,7 +6,8 @@ from django.core import serializers
 import django.utils.timezone
 
 from django.dispatch import receiver
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_delete
+from guardian.shortcuts import assign_perm
 
 def now():
     return django.utils.timezone.now().date()
@@ -14,6 +16,7 @@ class DeletedData(models.Model):
     model_type = models.CharField(max_length=200)
     model_id = models.IntegerField()
     data = models.TextField()
+
 
 class Package(models.Model):
     id = models.AutoField(primary_key=True)
@@ -36,6 +39,29 @@ class Booking(models.Model):
 
     def __str__(self):
         return '{} for {} on {}'.format(self.name, self.package.name, self.start)
+
+@receiver(post_save, sender=Booking)
+def set_booking_permissions(sender, instance, **kwargs):
+    user = User.objects.get(email=instance.email_address)
+    assign_perm('api.change_booking', user)
+    assign_perm('api.change_booking', user, instance)
+
+@receiver(post_delete, sender=Booking)
+def archive_booking(sender, instance, **kwargs):
+    data = serializers.serialize("json", [instance])
+    DeletedData.objects.create(
+        model_type="Booking",
+        model_id=instance.id,
+        data=data
+    )
+
+def restore_booking(id):
+    deleted = DeletedData.objects.get(model_type="Booking", model_id=id)
+    for instance in serializers.deserialize("json",deleted.data):
+        instance.save()
+        deleted.delete()
+
+
 
 class PackagePermission(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -72,3 +98,19 @@ class PackagePermission(models.Model):
 class ActivityLog(models.Model):
     user = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
     action = models.CharField(max_length=300)
+
+@receiver(post_save, sender=Booking) # whenever we save a booking -> creating an activity log
+def post_save_activity_log(sender,instance,**kwargs): # instance is our booking instance
+    user = User.objects.get(email=instance.email_address)
+    ActivityLog.objects.create(
+        user=user,
+        action = "{"+"""\"userId\":{}',
+            \"userEmail\":{}, 
+            \"itemAction\":createBooking,
+            \"itemId\":{}
+            """.format(
+                user.id,
+                user.email,
+                instance.id
+                ).strip("\n")+"}"
+    )
